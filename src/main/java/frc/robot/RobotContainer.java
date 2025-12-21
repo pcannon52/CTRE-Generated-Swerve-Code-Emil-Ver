@@ -24,59 +24,70 @@ public class RobotContainer {
     private double MaxAngularRate = RotationsPerSecond.of(0.75).in(RadiansPerSecond); // 3/4 of a rotation per second max angular velocity
 
     /* Setting up bindings for necessary control of the swerve drive platform */
-    private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
+    private final SwerveRequest.FieldCentric teleDrive = new SwerveRequest.FieldCentric()
             .withDeadband(MaxSpeed * 0.1).withRotationalDeadband(MaxAngularRate * 0.1) // Add a 10% deadband
-            .withDriveRequestType(DriveRequestType.OpenLoopVoltage); // Use open-loop control for drive motors
-    private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
+            .withDriveRequestType(DriveRequestType.OpenLoopVoltage); // Use open-loop control for tele op
+   
+            private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
     private final SwerveRequest.PointWheelsAt point = new SwerveRequest.PointWheelsAt();
 
     private final Telemetry logger = new Telemetry(MaxSpeed);
 
-    private final CommandXboxController joystick = new CommandXboxController(0);
-
-    public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
+    private final CommandXboxController m_Joystick = new CommandXboxController(0);
+    public final CommandSwerveDrivetrain m_Drivetrain = TunerConstants.createDrivetrain();
 
     public RobotContainer() {
-        configureBindings();
+        bindingConfigurations();
     }
 
-    private void configureBindings() {
+    public void bindingConfigurations(){
+        // Set default command - runs whenever no other command is using the drivetrain
         // Note that X is defined as forward according to WPILib convention,
         // and Y is defined as to the left according to WPILib convention.
-        drivetrain.setDefaultCommand(
-            // Drivetrain will execute this command periodically
-            drivetrain.applyRequest(() ->
-                drive.withVelocityX(-joystick.getLeftY() * MaxSpeed) // Drive forward with negative Y (forward)
-                    .withVelocityY(-joystick.getLeftX() * MaxSpeed) // Drive left with negative X (left)
-                    .withRotationalRate(-joystick.getRightX() * MaxAngularRate) // Drive counterclockwise with negative X (left)
+        m_Drivetrain.setDefaultCommand(
+            m_Drivetrain.applyRequest(() -> teleDrive
+                .withVelocityX(-m_Joystick.getLeftY() * MaxSpeed) // Forward/back
+                .withVelocityY(m_Joystick.getLeftX() * MaxSpeed) // Left/right
+                .withRotationalRate(-m_Joystick.getRightX() * MaxAngularRate) // Rotation
             )
         );
-
-        // Idle while the robot is disabled. This ensures the configured
+        
         // neutral mode is applied to the drive motors while disabled.
+        // Make sure the motors don't work even when robot is disabled
         final var idle = new SwerveRequest.Idle();
         RobotModeTriggers.disabled().whileTrue(
-            drivetrain.applyRequest(() -> idle).ignoringDisable(true)
+            m_Drivetrain.applyRequest(() -> idle).ignoringDisable(true)
         );
 
-        joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
-        joystick.b().whileTrue(drivetrain.applyRequest(() ->
-            point.withModuleDirection(new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))
+        m_Joystick.leftBumper().whileTrue(m_Drivetrain.applyRequest(() -> brake));
+        m_Joystick.leftTrigger().whileTrue(m_Drivetrain.applyRequest(() ->
+            point.withModuleDirection(new Rotation2d(-m_Joystick.getLeftY(), m_Joystick.getLeftX()))
         ));
 
         // Run SysId routines when holding back/start and X/Y.
         // Note that each routine should be run exactly once in a single log.
-        joystick.back().and(joystick.y()).whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
-        joystick.back().and(joystick.x()).whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
-        joystick.start().and(joystick.y()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kForward));
-        joystick.start().and(joystick.x()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kReverse));
+        m_Joystick.start().and(m_Joystick.x()).whileTrue(m_Drivetrain.sysIdTranslationQuasistatic(Direction.kForward));
+        // tells it to run the test in reverse direc
+        m_Joystick.start().and(m_Joystick.y()).whileTrue(m_Drivetrain.sysIdTranslationDynamic(Direction.kReverse));
+        m_Joystick.start().and(m_Joystick.b()).whileTrue(m_Drivetrain.sysIdTranslationQuasistatic(Direction.kForward));
+        m_Joystick.start().and(m_Joystick.a()).whileTrue(m_Drivetrain.sysIdTranslationQuasistatic(Direction.kReverse));
 
-        // reset the field-centric heading on left bumper press
-        joystick.leftBumper().onTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
+        m_Joystick.back().and(m_Joystick.x()).whileTrue(m_Drivetrain.sysIdRotationQuasistatic(Direction.kForward));
+        m_Joystick.back().and(m_Joystick.y()).whileTrue(m_Drivetrain.sysIdRotationDynamic(Direction.kReverse));
+        m_Joystick.back().and(m_Joystick.b()).whileTrue(m_Drivetrain.sysIdRotationQuasistatic(Direction.kForward));
+        m_Joystick.back().and(m_Joystick.a()).whileTrue(m_Drivetrain.sysIdRotationQuasistatic(Direction.kReverse));
 
-        drivetrain.registerTelemetry(logger::telemeterize);
+        m_Joystick.leftBumper().and(m_Joystick.x()).whileTrue(m_Drivetrain.sysIdSteerQuasistatic(Direction.kForward));
+        m_Joystick.leftBumper().and(m_Joystick.y()).whileTrue(m_Drivetrain.sysIdSteerDynamic(Direction.kReverse));
+        m_Joystick.leftBumper().and(m_Joystick.b()).whileTrue(m_Drivetrain.sysIdSteerQuasistatic(Direction.kForward));
+        m_Joystick.leftBumper().and(m_Joystick.a()).whileTrue(m_Drivetrain.sysIdSteerQuasistatic(Direction.kReverse));
+        //sets the new forward motion of a robot
+        m_Joystick.leftStick().onTrue(m_Drivetrain.runOnce(() -> m_Drivetrain.seedFieldCentric()));
+
+        m_Drivetrain.registerTelemetry(logger::telemeterize); // calls evrey time it regesters it telemetry
     }
-
+    
+    
     public Command getAutonomousCommand() {
         return Commands.print("No autonomous command configured");
     }

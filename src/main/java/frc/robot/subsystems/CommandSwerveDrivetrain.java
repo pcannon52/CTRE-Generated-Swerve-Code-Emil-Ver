@@ -106,7 +106,9 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     );
 
     /* The SysId routine to test */
-    private SysIdRoutine m_sysIdRoutineToApply = m_sysIdRoutineTranslation;
+    private SysIdRoutine m_sysIdTranslationToApply = m_sysIdRoutineTranslation;
+    private SysIdRoutine m_sysIdSteerToApply = m_sysIdRoutineSteer;
+    private SysIdRoutine m_sysIdRotationToApply = m_sysIdRoutineRotation;
 
     /**
      * Constructs a CTRE SwerveDrivetrain using the specified constants.
@@ -201,8 +203,8 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
      * @param direction Direction of the SysId Quasistatic test
      * @return Command to run
      */
-    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) {
-        return m_sysIdRoutineToApply.quasistatic(direction);
+    public Command sysIdTranslationQuasistatic(SysIdRoutine.Direction direction) {
+        return m_sysIdTranslationToApply.quasistatic(direction);
     }
 
     /**
@@ -212,8 +214,24 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
      * @param direction Direction of the SysId Dynamic test
      * @return Command to run
      */
-    public Command sysIdDynamic(SysIdRoutine.Direction direction) {
-        return m_sysIdRoutineToApply.dynamic(direction);
+    public Command sysIdTranslationDynamic(SysIdRoutine.Direction direction) {
+        return m_sysIdTranslationToApply.dynamic(direction);
+    }
+
+    public Command sysIdSteerDynamic(SysIdRoutine.Direction direction) {
+        return m_sysIdSteerToApply.dynamic(direction);
+    }
+
+    public Command sysIdSteerQuasistatic(SysIdRoutine.Direction direction) {
+        return m_sysIdSteerToApply.quasistatic(direction);
+    }
+
+    public Command sysIdRotationDynamic(SysIdRoutine.Direction direction) {
+        return m_sysIdRotationToApply.dynamic(direction);
+    }
+
+    public Command sysIdRotationQuasistatic(SysIdRoutine.Direction direction) {
+        return m_sysIdRotationToApply.quasistatic(direction);
     }
 
     @Override
