@@ -47,6 +47,10 @@ public class ManualTurretControlCommand extends Command {
     m_turret.rotateYaw(yawSpeed);
     m_turret.movePitch(pitchSpeed);
     
+    // Apply deadband
+    if (Math.abs(yawSpeed) < 0.1) yawSpeed = 0.0;
+    if (Math.abs(pitchSpeed) < 0.1) pitchSpeed = 0.0;
+
     // Safety: stop shooter if turret is moving
     if (Math.abs(yawSpeed) > 0.1 || Math.abs(pitchSpeed) > 0.1) {
       m_turret.stopShooter();

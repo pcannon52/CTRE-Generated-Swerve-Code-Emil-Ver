@@ -16,6 +16,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
 import frc.robot.Commands.Turret.ConstantRateRotateCommand;
+import frc.robot.Commands.Turret.ManualTurretControlCommand;
 import frc.robot.generated.TunerConstants;
 import frc.robot.subsystems.CommandSwerveDrivetrain;
 import frc.robot.subsystems.RobotArm;
@@ -94,6 +95,13 @@ public class RobotContainer {
     
     
     public void operatorConfigurations(){
+            m_turret.setDefaultCommand(
+            new ManualTurretControlCommand(
+                m_turret, // the .4 controlls how much speed the turret keeps
+                () -> m_OperatorController.getRightX() * 0.4,  // Yaw
+                () -> -m_OperatorController.getRightY() * 0.4   // Pitch
+            )
+        );
         m_OperatorController.leftBumper().whileTrue(ConstantRateRotateCommand.yawClockwise(m_turret));
         m_OperatorController.leftTrigger().whileTrue(ConstantRateRotateCommand.yawCounterClockwise(m_turret));
         m_OperatorController.rightBumper().whileTrue(ConstantRateRotateCommand.pitchUp(m_turret));
