@@ -18,69 +18,112 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Direction;
-
+import frc.robot.Commands.Turret.ConstantRateRotateCommand;
+import frc.robot.Commands.Turret.ManualTurretControlCommand;
 import frc.robot.generated.TunerConstants;
 import frc.robot.generated.GyroReset;  // Keep only this one
 import frc.robot.subsystems.CommandSwerveDrivetrain;
+<<<<<<< HEAD
+=======
+import frc.robot.subsystems.RobotArm;
+
+>>>>>>> 32f81d158a30414f3478627aa2d82284bebf41a1
 public class RobotContainer {
     private double MaxSpeed = TunerConstants.kSpeedAt12Volts.in(MetersPerSecond); // kSpeedAt12Volts desired top speed
     private double MaxAngularRate = RotationsPerSecond.of(3.).in(RadiansPerSecond); // 3/4 of a rotation per second max angular velocity
 
     /* Setting up bindings for necessary control of the swerve drive platform */
-    private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
+    private final SwerveRequest.FieldCentric teleDrive = new SwerveRequest.FieldCentric()
             .withDeadband(MaxSpeed * 0.1).withRotationalDeadband(MaxAngularRate * 0.1) // Add a 10% deadband
-            .withDriveRequestType(DriveRequestType.OpenLoopVoltage); // Use open-loop control for drive motors
-    private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
+            .withDriveRequestType(DriveRequestType.OpenLoopVoltage); // Use open-loop control for tele op
+   
+            private final SwerveRequest.SwerveDriveBrake brake = new SwerveRequest.SwerveDriveBrake();
     private final SwerveRequest.PointWheelsAt point = new SwerveRequest.PointWheelsAt();
 
     private final Telemetry logger = new Telemetry(MaxSpeed);
 
-    private final CommandXboxController joystick = new CommandXboxController(0);
-
-    public final CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
+    private final CommandXboxController m_DriverController = new CommandXboxController(0); // made up ports
+    private final CommandXboxController m_OperatorController = new CommandXboxController(1);
+    public final CommandSwerveDrivetrain m_Drivetrain = TunerConstants.createDrivetrain();
+    public final RobotArm m_turret = new RobotArm();
 
     public RobotContainer() {
-        configureBindings();
+      driverConfigurations();
+      operatorConfigurations();
+
     }
 
-    private void configureBindings() {
+    public void driverConfigurations(){
+        // Set default command - runs whenever no other command is using the drivetrain
         // Note that X is defined as forward according to WPILib convention,
         // and Y is defined as to the left according to WPILib convention.
-        drivetrain.setDefaultCommand(
-            // Drivetrain will execute this command periodically
-            drivetrain.applyRequest(() ->
-                drive.withVelocityX(-joystick.getLeftY() * MaxSpeed) // Drive forward with negative Y (forward)
-                    .withVelocityY(-joystick.getLeftX() * MaxSpeed) // Drive left with negative X (left)
-                    .withRotationalRate(-joystick.getRightX() * MaxAngularRate) // Drive counterclockwise with negative X (left)
+        m_Drivetrain.setDefaultCommand(
+            m_Drivetrain.applyRequest(() -> teleDrive
+                .withVelocityX(-m_DriverController.getLeftY() * MaxSpeed) // Forward/back
+                .withVelocityY(m_DriverController.getLeftX() * MaxSpeed) // Left/right
+                .withRotationalRate(-m_DriverController.getRightX() * MaxAngularRate) // Rotation
             )
         );
-
-        // Idle while the robot is disabled. This ensures the configured
+        
         // neutral mode is applied to the drive motors while disabled.
+        // Make sure the motors don't work even when robot is disabled
         final var idle = new SwerveRequest.Idle();
         RobotModeTriggers.disabled().whileTrue(
-            drivetrain.applyRequest(() -> idle).ignoringDisable(true)
+            m_Drivetrain.applyRequest(() -> idle).ignoringDisable(true)
         );
 
-        joystick.a().whileTrue(drivetrain.applyRequest(() -> brake));
-        joystick.b().whileTrue(drivetrain.applyRequest(() ->
-            point.withModuleDirection(new Rotation2d(-joystick.getLeftY(), -joystick.getLeftX()))
+        m_DriverController.leftBumper().whileTrue(m_Drivetrain.applyRequest(() -> brake));
+        m_DriverController.leftTrigger().whileTrue(m_Drivetrain.applyRequest(() ->
+            point.withModuleDirection(new Rotation2d(-m_DriverController.getLeftY(), m_DriverController.getLeftX()))
         ));
 
         // Run SysId routines when holding back/start and X/Y.
         // Note that each routine should be run exactly once in a single log.
-        joystick.back().and(joystick.y()).whileTrue(drivetrain.sysIdDynamic(Direction.kForward));
-        joystick.back().and(joystick.x()).whileTrue(drivetrain.sysIdDynamic(Direction.kReverse));
-        joystick.start().and(joystick.y()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kForward));
-        joystick.start().and(joystick.x()).whileTrue(drivetrain.sysIdQuasistatic(Direction.kReverse));
+        m_DriverController.start().and(m_DriverController.x()).whileTrue(m_Drivetrain.sysIdTranslationQuasistatic(Direction.kForward));
+        // tells it to run the test in reverse direc
+        m_DriverController.start().and(m_DriverController.y()).whileTrue(m_Drivetrain.sysIdTranslationDynamic(Direction.kReverse));
+        m_DriverController.start().and(m_DriverController.b()).whileTrue(m_Drivetrain.sysIdTranslationQuasistatic(Direction.kForward));
+        m_DriverController.start().and(m_DriverController.a()).whileTrue(m_Drivetrain.sysIdTranslationQuasistatic(Direction.kReverse));
 
-        // reset the field-centric heading on left bumper press
-        joystick.leftBumper().onTrue(drivetrain.runOnce(() -> drivetrain.seedFieldCentric()));
+        m_DriverController.back().and(m_DriverController.x()).whileTrue(m_Drivetrain.sysIdRotationQuasistatic(Direction.kForward));
+        m_DriverController.back().and(m_DriverController.y()).whileTrue(m_Drivetrain.sysIdRotationDynamic(Direction.kReverse));
+        m_DriverController.back().and(m_DriverController.b()).whileTrue(m_Drivetrain.sysIdRotationQuasistatic(Direction.kForward));
+        m_DriverController.back().and(m_DriverController.a()).whileTrue(m_Drivetrain.sysIdRotationQuasistatic(Direction.kReverse));
 
+<<<<<<< HEAD
         joystick.rightBumper().onTrue(new GyroReset(drivetrain));
 
         drivetrain.registerTelemetry(logger::telemeterize);
+=======
+        m_DriverController.leftBumper().and(m_DriverController.x()).whileTrue(m_Drivetrain.sysIdSteerQuasistatic(Direction.kForward));
+        m_DriverController.leftBumper().and(m_DriverController.y()).whileTrue(m_Drivetrain.sysIdSteerDynamic(Direction.kReverse));
+        m_DriverController.leftBumper().and(m_DriverController.b()).whileTrue(m_Drivetrain.sysIdSteerQuasistatic(Direction.kForward));
+        m_DriverController.leftBumper().and(m_DriverController.a()).whileTrue(m_Drivetrain.sysIdSteerQuasistatic(Direction.kReverse));
+        //sets the new forward motion of a robot
+        m_DriverController.leftStick().onTrue(m_Drivetrain.runOnce(() -> m_Drivetrain.seedFieldCentric()));
+
+        m_Drivetrain.registerTelemetry(logger::telemeterize); // calls evrey time it regesters it telemetry
+>>>>>>> 32f81d158a30414f3478627aa2d82284bebf41a1
     }
+    
+    
+    public void operatorConfigurations(){
+            m_turret.setDefaultCommand(
+            new ManualTurretControlCommand(
+                m_turret, // the .4 controlls how much speed the turret keeps
+                () -> m_OperatorController.getRightX() * 0.4,  // Yaw
+                () -> -m_OperatorController.getRightY() * 0.4   // Pitch
+            )
+        );
+        m_OperatorController.leftBumper().whileTrue(ConstantRateRotateCommand.yawClockwise(m_turret));
+        m_OperatorController.leftTrigger().whileTrue(ConstantRateRotateCommand.yawCounterClockwise(m_turret));
+        m_OperatorController.rightBumper().whileTrue(ConstantRateRotateCommand.pitchUp(m_turret));
+        m_OperatorController.rightTrigger().whileTrue(ConstantRateRotateCommand.pitchDown(m_turret));
+        m_OperatorController.start().onTrue(m_turret.goHome());
+        m_OperatorController.back().onTrue(m_turret.stopAll());
+        m_OperatorController.a().onTrue(m_turret.shoot());
+    }
+
 
     public Command getAutonomousCommand() {
         return Commands.print("No autonomous command configured");
